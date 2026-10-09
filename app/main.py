@@ -1805,15 +1805,20 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     <option value="ON_DUTY">ON_DUTY (Official Duty)</option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Punch Timestamp (Optional)</label>
-                  <input type="datetime-local" id="punchin-time" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                  <p class="text-xs text-slate-400 mt-1">Leave empty to punch in at current clock time.</p>
+                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-600">Punch Time:</span>
+                    <span class="inline-flex items-center text-emerald-700 font-bold">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
+                      Current Time (Automatic)
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Automatically recorded from the current instant in IST.</p>
                 </div>
               </div>
             </div>
             <button onclick="submitPunchIn()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow transition flex items-center justify-center">
-              <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Submit Punch-In (201)
+              <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Punch-In Now
             </button>
           </div>
 
@@ -1833,15 +1838,20 @@ FRONTEND_HTML = """<!DOCTYPE html>
                     <option value="">Loading employees...</option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Punch Timestamp (Optional)</label>
-                  <input type="datetime-local" id="punchout-time" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                  <p class="text-xs text-slate-400 mt-1">Closes most recent open shift (within 24h).</p>
+                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-slate-600">Punch Time:</span>
+                    <span class="inline-flex items-center text-amber-700 font-bold">
+                      <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-1.5"></span>
+                      Current Time (Automatic)
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Automatically closes the open shift at current instant.</p>
                 </div>
               </div>
             </div>
             <button onclick="submitPunchOut()" class="mt-6 w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow transition flex items-center justify-center">
-              <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Submit Punch-Out (200)
+              <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Punch-Out Now
             </button>
           </div>
         </div>
@@ -2334,17 +2344,23 @@ FRONTEND_HTML = """<!DOCTYPE html>
       }
     }
 
-    // Punch In
+    // Punch In (Uses current instant automatically)
     async function submitPunchIn() {
       const emp_code = document.getElementById('punchin-emp').value;
       const status = document.getElementById('punchin-status').value;
-      const timeInput = document.getElementById('punchin-time').value;
       const resBox = document.getElementById('punch-result');
 
-      const body = { emp_code, status };
-      if (timeInput) {
-        body.punched_at = new Date(timeInput).getTime();
+      if (!emp_code) {
+        alert('Please select an employee first.');
+        return;
       }
+
+      // Automatically capture current time
+      const body = {
+        emp_code: emp_code,
+        status: status,
+        punched_at: Date.now()
+      };
 
       try {
         const res = await fetch('/attendance/punch-in', {
@@ -2356,26 +2372,31 @@ FRONTEND_HTML = """<!DOCTYPE html>
         resBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-rose-50', 'border-rose-200', 'text-rose-800');
         if (res.ok) {
           resBox.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
-          resBox.innerHTML = `<strong>Punch-In Success (201):</strong> Record created for <b>${data.emp_code}</b> on <b>${data.date}</b>. Status: <b>${data.status}</b>, Late Minutes: <b>${data.late_minutes}</b>.`;
+          resBox.innerHTML = `<strong>Punch-In Success (201):</strong> Recorded punch for <b>${data.emp_code}</b> on <b>${data.date}</b> at <b>${formatEpoch(data.punch_in)}</b>. Status: <b>${data.status}</b>, Late Minutes: <b>${data.late_minutes} min</b>.`;
         } else {
           resBox.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-800');
-          resBox.innerHTML = `<strong>Error (${res.status}):</strong> ${data.detail || JSON.stringify(data)}`;
+          resBox.innerHTML = `<strong>Punch-In Failed (${res.status}):</strong> ${data.detail || JSON.stringify(data)}`;
         }
       } catch (err) {
         alert('Network request failed');
       }
     }
 
-    // Punch Out
+    // Punch Out (Uses current instant automatically)
     async function submitPunchOut() {
       const emp_code = document.getElementById('punchout-emp').value;
-      const timeInput = document.getElementById('punchout-time').value;
       const resBox = document.getElementById('punch-result');
 
-      const body = { emp_code };
-      if (timeInput) {
-        body.punched_at = new Date(timeInput).getTime();
+      if (!emp_code) {
+        alert('Please select an employee first.');
+        return;
       }
+
+      // Automatically capture current time
+      const body = {
+        emp_code: emp_code,
+        punched_at: Date.now()
+      };
 
       try {
         const res = await fetch('/attendance/punch-out', {
